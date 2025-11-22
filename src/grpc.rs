@@ -35,6 +35,14 @@ impl LinkWithMentor for MyLinkWithMentor {
     ) -> Result<Response<UserResponse>, Status> {
         let req = request.into_inner();
         
+        // Rate limiting check
+        if !self.state.rate_limiter.check_rate_limit(&req.firebase_uid) {
+            tracing::warn!("Rate limit exceeded for user: {}", req.firebase_uid);
+            return Err(Status::resource_exhausted("Rate limit exceeded. Please try again later."));
+        }
+        
+        tracing::info!("Creating user: {}", req.email);
+        
         let user = crate::models::CreateUser {
             firebase_uid: req.firebase_uid,
             email: req.email,
@@ -45,12 +53,17 @@ impl LinkWithMentor for MyLinkWithMentor {
 
         let user_id = crate::db::create_user(&self.state.db, &user)
             .await
-            .map_err(|e| Status::internal(format!("Failed to create user: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create user: {}", e);
+                Status::internal(format!("Failed to create user: {}", e))
+            })?;
 
         let created_user = crate::db::get_user_by_id(&self.state.db, user_id)
             .await
             .map_err(|e| Status::internal(format!("Failed to get user: {}", e)))?
             .ok_or_else(|| Status::not_found("User not found after creation"))?;
+
+        tracing::info!("User created successfully: ID {}", created_user.id);
 
         Ok(Response::new(UserResponse {
             id: created_user.id,
