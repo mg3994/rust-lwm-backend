@@ -4,6 +4,22 @@ package service;
 
 service LinkWithMentor {
   rpc Ping (PingRequest) returns (PingResponse);
+  
+  // User management
+  rpc CreateUser (CreateUserRequest) returns (UserResponse);
+  rpc GetUser (GetUserRequest) returns (UserResponse);
+  
+  // Session management
+  rpc CreateSession (CreateSessionRequest) returns (SessionResponse);
+  rpc GetUserSessions (GetUserSessionsRequest) returns (SessionListResponse);
+  
+  // Notifications
+  rpc SendNotification (SendNotificationRequest) returns (NotificationResponse);
+  rpc GetUnreadNotifications (GetUnreadNotificationsRequest) returns (NotificationListResponse);
+  rpc MarkNotificationRead (MarkNotificationReadRequest) returns (EmptyResponse);
+  
+  // Device tokens
+  rpc RegisterDeviceToken (RegisterDeviceTokenRequest) returns (EmptyResponse);
 }
 
 message PingRequest {
@@ -13,3 +29,101 @@ message PingRequest {
 message PingResponse {
   string message = 1;
 }
+
+// User messages
+message CreateUserRequest {
+  string firebase_uid = 1;
+  string email = 2;
+  optional string display_name = 3;
+  optional string photo_url = 4;
+  optional string role = 5;
+}
+
+message GetUserRequest {
+  oneof identifier {
+    uint64 user_id = 1;
+    string firebase_uid = 2;
+  }
+}
+
+message UserResponse {
+  uint64 id = 1;
+  string firebase_uid = 2;
+  string email = 3;
+  optional string display_name = 4;
+  optional string photo_url = 5;
+  string role = 6;
+  string created_at = 7;
+}
+
+// Session messages
+message CreateSessionRequest {
+  uint64 user_id = 1;
+  uint64 mentor_id = 2;
+  string title = 3;
+  optional string description = 4;
+  string scheduled_at = 5;
+  optional int32 duration_minutes = 6;
+  optional string meeting_link = 7;
+}
+
+message SessionResponse {
+  uint64 id = 1;
+  uint64 user_id = 2;
+  uint64 mentor_id = 3;
+  string title = 4;
+  optional string description = 5;
+  string scheduled_at = 6;
+  int32 duration_minutes = 7;
+  string status = 8;
+  optional string meeting_link = 9;
+}
+
+message GetUserSessionsRequest {
+  uint64 user_id = 1;
+}
+
+message SessionListResponse {
+  repeated SessionResponse sessions = 1;
+}
+
+// Notification messages
+message SendNotificationRequest {
+  uint64 user_id = 1;
+  string title = 2;
+  string body = 3;
+  string notification_type = 4;
+  optional string data = 5;
+}
+
+message NotificationResponse {
+  uint64 id = 1;
+  uint64 user_id = 2;
+  string title = 3;
+  string body = 4;
+  string notification_type = 5;
+  optional string data = 6;
+  bool is_read = 7;
+  string created_at = 8;
+}
+
+message GetUnreadNotificationsRequest {
+  uint64 user_id = 1;
+}
+
+message NotificationListResponse {
+  repeated NotificationResponse notifications = 1;
+}
+
+message MarkNotificationReadRequest {
+  uint64 notification_id = 1;
+}
+
+// Device token messages
+message RegisterDeviceTokenRequest {
+  uint64 user_id = 1;
+  string token = 2;
+  string device_type = 3;
+}
+
+message EmptyResponse {}
