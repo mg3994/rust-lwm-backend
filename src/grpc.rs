@@ -1,4 +1,6 @@
 use tonic::{transport::Server, Request, Response, Status};
+use std::sync::Arc;
+use crate::AppState;
 
 pub mod pb {
     tonic::include_proto!("service");
@@ -7,8 +9,10 @@ pub mod pb {
 use pb::link_with_mentor_server::{LinkWithMentor, LinkWithMentorServer};
 use pb::{PingRequest, PingResponse};
 
-#[derive(Debug, Default)]
-pub struct MyLinkWithMentor {}
+#[derive(Debug)]
+pub struct MyLinkWithMentor {
+    state: Arc<AppState>,
+}
 
 #[tonic::async_trait]
 impl LinkWithMentor for MyLinkWithMentor {
@@ -18,6 +22,9 @@ impl LinkWithMentor for MyLinkWithMentor {
     ) -> Result<Response<PingResponse>, Status> {
         println!("Got a request: {:?}", request);
 
+        // Example usage of state:
+        // self.state.firebase.send_notification(...)
+
         let reply = PingResponse {
             message: format!("Pong: {}", request.into_inner().message),
         };
@@ -26,9 +33,9 @@ impl LinkWithMentor for MyLinkWithMentor {
     }
 }
 
-pub async fn run(host: &str, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(host: &str, port: u16, state: Arc<AppState>) -> Result<(), Box<dyn std::error::Error>> {
     let addr = format!("{}:{}", host, port).parse()?;
-    let service = MyLinkWithMentor::default();
+    let service = MyLinkWithMentor { state };
 
     println!("gRPC server listening on {}", addr);
 

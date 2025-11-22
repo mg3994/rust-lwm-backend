@@ -1,8 +1,10 @@
 use tokio::net::UdpSocket;
 use tokio_quiche::QuicListener;
 use quiche::Config;
+use std::sync::Arc;
+use crate::AppState;
 
-pub async fn run(host: &str, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(host: &str, port: u16, _state: Arc<AppState>) -> Result<(), Box<dyn std::error::Error>> {
     let addr = format!("{}:{}", host, port);
     let socket = UdpSocket::bind(&addr).await?;
     println!("HTTP/3 server listening on {}", addr);
@@ -18,9 +20,8 @@ pub async fn run(host: &str, port: u16) -> Result<(), Box<dyn std::error::Error>
     config.set_initial_max_streams_uni(100);
     config.set_disable_active_migration(true);
 
-    // Note: You need to load certificates here for QUIC to work
-    // config.load_cert_chain_from_pem_file("cert.crt")?;
-    // config.load_priv_key_from_pem_file("cert.key")?;
+    config.load_cert_chain_from_pem_file("cert.crt")?;
+    config.load_priv_key_from_pem_file("cert.key")?;
 
     // Placeholder for listener loop
     // let listener = QuicListener::new(socket, config);
@@ -32,6 +33,6 @@ pub async fn run(host: &str, port: u16) -> Result<(), Box<dyn std::error::Error>
     //     });
     // }
 
-    println!("HTTP/3 server setup complete (waiting for certs)");
+    println!("HTTP/3 server setup complete (SSL loaded)");
     Ok(())
 }

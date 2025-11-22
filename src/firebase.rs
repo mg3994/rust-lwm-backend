@@ -94,60 +94,11 @@ impl FirebaseClient {
         }
 
         let token_res: TokenResponse = res.json().await
-            .map_err(|e| format!("Failed to parse token response: {}", e))?;
-
-        Ok(token_res.access_token)
-    }
-
-    pub async fn verify_token(&self, token: &str) -> bool {
-        println!("Verifying token: {}", token);
-        // Full verification requires fetching Google's public keys and validating the signature.
-        // For now, we are focusing on the sending part as requested.
-        true
-    }
-
-    pub async fn send_notification(&self, token: &str, title: &str, body: &str, notification_type: NotificationType) -> Result<(), Box<dyn std::error::Error>> {
-        println!("Sending notification to {}: {} - {} ({:?})", token, title, body, notification_type);
-        
-        let access_token = self.get_access_token().await?;
-
-        let url = format!("https://fcm.googleapis.com/v1/projects/{}/messages:send", self.service_account.project_id);
-
-        let mut data = serde_json::Map::new();
-        
-        match notification_type {
-            NotificationType::Standard => {},
-            NotificationType::Link { url } => {
-                data.insert("type".to_string(), json!("link"));
-                data.insert("url".to_string(), json!(url));
-            },
-            NotificationType::Image { url } => {
-                data.insert("type".to_string(), json!("image"));
-                data.insert("image_url".to_string(), json!(url));
-            },
-            NotificationType::Chat { sender_id, chat_id } => {
-                data.insert("type".to_string(), json!("chat"));
-                data.insert("sender_id".to_string(), json!(sender_id));
-                data.insert("chat_id".to_string(), json!(chat_id));
-            },
-            NotificationType::Call { caller_id, call_id, is_video } => {
-                data.insert("type".to_string(), json!("call"));
-                data.insert("caller_id".to_string(), json!(caller_id));
-                data.insert("call_id".to_string(), json!(call_id));
-                data.insert("is_video".to_string(), json!(is_video.to_string())); // FCM data values must be strings
-            },
-        }
-
-        let mut message = json!({
-            "token": token,
-            "notification": {
-                "title": title,
-                "body": body
             }
         });
 
-        if !data.is_empty() {
-            message["data"] = json!(data);
+        if !data_map.is_empty() {
+            message["data"] = json!(data_map);
         }
 
         let payload = json!({ "message": message });
