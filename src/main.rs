@@ -5,6 +5,7 @@ mod grpc;
 mod firebase;
 mod cert;
 mod models;
+mod auth;
 
 use config::Config;
 
