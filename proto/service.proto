@@ -5,6 +5,10 @@ package service;
 service LinkWithMentor {
   rpc Ping (PingRequest) returns (PingResponse);
   
+  // Health and Metrics
+  rpc HealthCheck (EmptyRequest) returns (HealthResponse);
+  rpc GetMetrics (EmptyRequest) returns (MetricsResponse);
+  
   // User management
   rpc CreateUser (CreateUserRequest) returns (UserResponse);
   rpc GetUser (GetUserRequest) returns (UserResponse);
@@ -127,3 +131,23 @@ message RegisterDeviceTokenRequest {
 }
 
 message EmptyResponse {}
+
+// Health and Metrics messages
+message EmptyRequest {}
+
+message HealthResponse {
+  string status = 1;
+  bool database = 2;
+  bool firebase = 3;
+  uint64 uptime_seconds = 4;
+}
+
+message MetricsResponse {
+  uint64 total_requests = 1;
+  uint64 successful_requests = 2;
+  uint64 failed_requests = 3;
+  double success_rate = 4;
+  uint64 total_users_created = 5;
+  uint64 total_sessions_created = 6;
+  uint64 total_notifications_sent = 7;
+}

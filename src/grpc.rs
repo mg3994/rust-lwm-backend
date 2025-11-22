@@ -20,24 +20,64 @@ impl LinkWithMentor for MyLinkWithMentor {
         &self,
         request: Request<PingRequest>,
     ) -> Result<Response<PingResponse>, Status> {
-        println!("Got a ping request: {:?}", request);
+        self.state.metrics.increment_requests();
+        
+        tracing::debug!("Got a ping request: {:?}", request);
 
         let reply = PingResponse {
             message: format!("Pong: {}", request.into_inner().message),
         };
 
+        self.state.metrics.increment_successful();
         Ok(Response::new(reply))
+    }
+
+    async fn health_check(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<HealthResponse>, Status> {
+        let health = crate::health::check_health(
+            self.state.clone(),
+            self.state.start_time
+        ).await;
+
+        Ok(Response::new(HealthResponse {
+            status: health.status,
+            database: health.database,
+            firebase: health.firebase,
+            uptime_seconds: health.uptime_seconds,
+        }))
+    }
+
+    async fn get_metrics(
+        &self,
+        _request: Request<EmptyRequest>,
+    ) -> Result<Response<MetricsResponse>, Status> {
+        let snapshot = self.state.metrics.get_snapshot();
+
+        Ok(Response::new(MetricsResponse {
+            total_requests: snapshot.total_requests,
+            successful_requests: snapshot.successful_requests,
+            failed_requests: snapshot.failed_requests,
+            success_rate: snapshot.success_rate(),
+            total_users_created: snapshot.total_users_created,
+            total_sessions_created: snapshot.total_sessions_created,
+            total_notifications_sent: snapshot.total_notifications_sent,
+        }))
     }
 
     async fn create_user(
         &self,
         request: Request<CreateUserRequest>,
     ) -> Result<Response<UserResponse>, Status> {
+        self.state.metrics.increment_requests();
+        
         let req = request.into_inner();
         
         // Rate limiting check
         if !self.state.rate_limiter.check_rate_limit(&req.firebase_uid) {
             tracing::warn!("Rate limit exceeded for user: {}", req.firebase_uid);
+            self.state.metrics.increment_failed();
             return Err(Status::resource_exhausted("Rate limit exceeded. Please try again later."));
         }
         
@@ -55,15 +95,24 @@ impl LinkWithMentor for MyLinkWithMentor {
             .await
             .map_err(|e| {
                 tracing::error!("Failed to create user: {}", e);
+                self.state.metrics.increment_failed();
                 Status::internal(format!("Failed to create user: {}", e))
             })?;
 
         let created_user = crate::db::get_user_by_id(&self.state.db, user_id)
             .await
-            .map_err(|e| Status::internal(format!("Failed to get user: {}", e)))?
-            .ok_or_else(|| Status::not_found("User not found after creation"))?;
+            .map_err(|e| {
+                self.state.metrics.increment_failed();
+                Status::internal(format!("Failed to get user: {}", e))
+            })?
+            .ok_or_else(|| {
+                self.state.metrics.increment_failed();
+                Status::not_found("User not found after creation")
+            })?;
 
         tracing::info!("User created successfully: ID {}", created_user.id);
+        self.state.metrics.increment_successful();
+        self.state.metrics.increment_users_created();
 
         Ok(Response::new(UserResponse {
             id: created_user.id,
