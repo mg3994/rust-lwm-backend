@@ -141,6 +141,7 @@ dependencies = [
  "prost",
  "rcgen",
  "reqwest",
+ "serde",
  "serde_json",
  "sqlx",
  "tokio",

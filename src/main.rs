@@ -4,6 +4,7 @@ mod server;
 mod grpc;
 mod firebase;
 mod cert;
+mod models;
 
 use config::Config;
 
