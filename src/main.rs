@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 pub struct AppState {
     pub firebase: firebase::FirebaseClient,
-    pub db: db::DatabaseConnection,
+    pub db: db::DbPool,
 }
 
 #[tokio::main]
