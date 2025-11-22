@@ -23,16 +23,39 @@ pub async fn run(host: &str, port: u16, _state: Arc<AppState>) -> Result<(), Box
     config.load_cert_chain_from_pem_file("cert.crt")?;
     config.load_priv_key_from_pem_file("cert.key")?;
 
-    // Placeholder for listener loop
-    // let listener = QuicListener::new(socket, config);
+    // Create the listener
+    let mut listener = QuicListener::new(socket, config);
     
-    // loop {
-    //     let connection = listener.accept().await?;
-    //     tokio::spawn(async move {
-    //         // Handle connection
-    //     });
-    // }
+    loop {
+        // Accept a new connection
+        let mut connection = match listener.accept().await {
+            Ok(conn) => conn,
+            Err(_) => continue,
+        };
 
-    println!("HTTP/3 server setup complete (SSL loaded)");
-    Ok(())
+        let state = _state.clone();
+        
+        tokio::spawn(async move {
+            println!("New connection established");
+            
+            // Simple loop to handle streams
+            loop {
+                match connection.stream_recv().await {
+                    Ok((mut stream_id, mut data)) => {
+                        println!("Received stream {} with {} bytes", stream_id, data.len());
+                        // Echo back or send a response
+                        // For HTTP/3, this would be much more complex (headers, frames, etc.)
+                        // Here we just do a raw QUIC echo for demonstration of the transport
+                        
+                        // Example: Send "Hello from LinkWithMentor"
+                        let response = b"Hello from LinkWithMentor HTTP/3 (Raw QUIC)";
+                        if let Err(e) = connection.stream_send(stream_id, response, true).await {
+                             eprintln!("Failed to send response: {}", e);
+                        }
+                    },
+                    Err(_) => break, // Connection closed or error
+                }
+            }
+        });
+    }
 }
